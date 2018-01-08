@@ -1,0 +1,29 @@
+NLP-TEA 2016 Shared Task
+Chinese Grammatical Error Diagnosis
+
+System Results: final_result.txt
+Gold Standard: CGED16_HSK_Test_Truth.txt
+
+==========================================================
+Overall Performance
+==========================================================
+
+False Positive Rate = 0.0754 (116/1539)
+
+Detection Level
+	Accuracy = 0.6443 (1940/3011)
+	Precision = 0.8167 (517/633)
+	Recall = 0.3512 (517/1472)
+	F1-Score = 0.4912 ((2*0.8167*0.3512)/(0.8167+0.3512))
+
+Identification Level
+	Accuracy = 0.6523 (2084/3195)
+	Precision = 0.8091 (661/817)
+	Recall = 0.2651 (661/2493)
+	F1-Score = 0.3994 ((2*0.8091*0.2651)/(0.8091+0.2651))
+
+Position Level
+	Accuracy = 0.6352 (2171/3418)
+	Precision = 0.7192 (748/1040)
+	Recall = 0.2024 (748/3695)
+	F1-Score = 0.3159 ((2*0.7192*0.2024)/(0.7192+0.2024))

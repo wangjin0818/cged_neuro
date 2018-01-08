@@ -10,7 +10,7 @@ import numpy as np
 
 from keras.preprocessing import sequence
 from keras.models import Sequential
-from keras.layers import Embedding, Bidirectional, LSTM
+from keras.layers import Embedding, Bidirectional, LSTM, GRU
 from keras.preprocessing.sequence import pad_sequences
 from keras_contrib.layers import CRF
 
@@ -25,6 +25,14 @@ error_dict = {
     'W': 4
 }
 
+error_idx = {
+    0: 'C',
+    1: 'R',
+    2: 'M',
+    3: 'S',
+    4: 'W'
+}
+
 def get_idx_from_sent(sent, word_idx_map):
     x = []
 
@@ -36,7 +44,7 @@ def get_idx_from_sent(sent, word_idx_map):
     return x
 
 def make_idx_data(revs, word_idx_map, maxlen=60):
-    X_train, X_test, y_train = [], [], []
+    X_train, X_test, y_train, sid_test = [], [], [], []
     for rev in revs:
         sent = get_idx_from_sent(rev['text'], word_idx_map)
 
@@ -48,6 +56,7 @@ def make_idx_data(revs, word_idx_map, maxlen=60):
 
         elif rev['option'] == 'test':
             X_test.append(sent)
+            sid_test.append(rev['sid'])
 
     X_train = sequence.pad_sequences(np.array(X_train), maxlen=maxlen)
     X_test = sequence.pad_sequences(np.array(X_test), maxlen=maxlen)
@@ -58,7 +67,7 @@ def make_idx_data(revs, word_idx_map, maxlen=60):
     print(X_train.shape)
     print(y_train.shape)
     print(X_test.shape)
-    return X_train, y_train, X_test
+    return X_train, y_train, X_test, sid_test
 
 if __name__ == '__main__':
     program = os.path.basename(sys.argv[0])
@@ -70,10 +79,10 @@ if __name__ == '__main__':
 
     logging.info('loading data...')
     pickle_file = os.path.join('pickle', 'cged_hsk_random.pickle3')
-    revs, vocab, word_idx_map, vocab, maxlen = pickle.load(open(pickle_file, 'rb'))
+    revs, vocab, word_idx_map, maxlen = pickle.load(open(pickle_file, 'rb'))
     logging.info('data loaded!')
 
-    X_train, y_train, X_test = make_idx_data(revs, word_idx_map, maxlen=maxlen)
+    X_train, y_train, X_test, sid_test = make_idx_data(revs, word_idx_map, maxlen=maxlen)
 
     # --------------
     # 1. Regular CRF
@@ -83,7 +92,8 @@ if __name__ == '__main__':
 
     model = Sequential()
     model.add(Embedding(len(vocab), EMBEDDING_DIM, mask_zero=True))  # Random embedding
-    model.add(Bidirectional(LSTM(BiLSTM_HIDDEN_DIM // 2, return_sequences=True)))
+    model.add(Bidirectional(GRU(BiLSTM_HIDDEN_DIM // 2, return_sequences=True, recurrent_dropout=0.5)))
+    # model.add(Bidirectional(LSTM(BiLSTM_HIDDEN_DIM // 2, return_sequences=True, recurrent_dropout=0.5)))
     crf = CRF(len(error_dict), sparse_target=True)
     model.add(crf)
 
@@ -104,3 +114,48 @@ if __name__ == '__main__':
     print(y_pred.count(2))
     print(y_pred.count(3))
     print(y_pred.count(4))
+
+    final_result_file = os.path.join('result', 'cged16_hsk_random_bilstm_crf.txt')
+    with open(final_result_file, 'w') as my_file:
+        for i in range(len(X_test)):
+            sent = X_test[i]
+            sid = sid_test[i]
+
+            label = []
+            for j in range(len(sent)):
+                if sent[j] != 0:
+                    label.append(y_test_pred[i][j])
+
+            error_flag = False
+            is_correct = False
+
+            current_error = 0
+            start_pos = 0
+            end_pos = 0
+            error_dict = {}
+            for k in range(len(label)):
+                if label[k] != 0 and error_flag == False:
+                    error_flag = True
+                    start_pos = k + 1
+                    current_error = label[k]
+                    is_correct = True
+
+                if error_flag == True and label[k] != current_error and label[k] == 0:
+                    end_pos = k
+                    my_file.write('%s, %d, %d, %s\n' % (sid, start_pos, end_pos, error_idx[current_error]))
+
+                    error_flag = False
+                    current_error = 0
+
+                if error_flag == True and label[k] != current_error and label[k] != 0:
+                    end_pos = k
+                    my_file.write('%s, %d, %d, %s\n' % (sid, start_pos, end_pos, error_idx[current_error]))
+
+                    start_pos = k + 1
+                    current_error = label[k]
+
+            if is_correct == False:
+                my_file.write('%s, correct\n' % (sid))
+
+            if i % 100 == 0:
+                logging.info('processed: %d/%d' % (i, len(sid_test)))

@@ -47,6 +47,8 @@ def hsk_position_train_serialize(file_name):
         text_array = []
         label_array = []
 
+        
+
         len_text.append(len(text))
         for i in range(len(text)):
             if i in locate_dict:
@@ -58,6 +60,23 @@ def hsk_position_train_serialize(file_name):
 
         ret_text.append(text_array)
         ret_label.append(label_array)
+
+        # statistic_label = ret_label
+        # statistic_label = np.array(statistic_label)
+
+    statistic_label = []
+    for i in range(len(ret_label)):
+        line_data = ret_label[i]
+        for j in range(len(line_data)):
+            statistic_label.append(line_data[j])
+
+    print('Training statistic: ')
+    print('Total len: %d' % (len(statistic_label)))
+    print('C position: %d, ratio: %f' % (statistic_label.count(0), float(statistic_label.count(0)) / float(len(statistic_label))))
+    print('R position: %d, ratio: %f' % (statistic_label.count(1), float(statistic_label.count(1)) / float(len(statistic_label))))
+    print('M position: %d, ratio: %f' % (statistic_label.count(2), float(statistic_label.count(2)) / float(len(statistic_label))))
+    print('S position: %d, ratio: %f' % (statistic_label.count(3), float(statistic_label.count(3)) / float(len(statistic_label))))
+    print('W position: %d, ratio: %f' % (statistic_label.count(4), float(statistic_label.count(4)) / float(len(statistic_label))))
 
     return ret_text, ret_label
 
